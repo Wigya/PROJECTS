@@ -1,10 +1,20 @@
-from urllib.request import urlopen, Request
+from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import json
+import re
+
 class Olx():
 
     def __init__(self, url):
         self.url = url
+
+    def getTitle(self):
+        html = urlopen(self.url)
+        bs = BeautifulSoup(html, 'html.parser')
+        content = bs.find('div', class_='content')
+        title = content.find_all('a', {'class':['marginright5 link linkWithHash detailsLinkPromoted linkWithHashPromoted','marginright5 link linkWithHash detailsLink','marginright5 link linkWithHash detailsLinkPromoted']})
+        return title
+
 
     def getPrice(self):
         """Get prices from olx"""
@@ -25,14 +35,39 @@ class Olx():
         else:
             return pageButton
 
+
+def saveOutput():
+    """Function which saves output into file"""
+    filenamePrices = 'prices.txt'
+    with open(filenamePrices, 'w', encoding='utf-8') as obj:
+        json.dump(Prices, obj, indent='\t', ensure_ascii=False)
+    
+    filenameTitles = 'titles.txt'
+    with open(filenameTitles, 'w', encoding='utf-8') as obj:
+        json.dump(Titles, obj, indent='\t', ensure_ascii=False)
+
+# Instances of class
 olxprices = Olx('https://www.olx.pl/nieruchomosci/mieszkania/wynajem/olsztyn/').getPrice()
 nextpage = Olx('https://www.olx.pl/nieruchomosci/mieszkania/wynajem/olsztyn/').nextPage()
+title = Olx('https://www.olx.pl/nieruchomosci/mieszkania/wynajem/olsztyn/').getTitle()
 
-counter = 0
 
-while len(nextpage) > 0:
+# This part of code saves all prices
+Prices = []
+for page in nextpage:
     for price in olxprices:
-        print(price.get_text().strip())
-    newUrl = nextpage[counter]['href']
+        Prices.append(price.get_text().strip().replace('ł', '').replace('z', '').replace(' ',''))
+    newUrl = page['href']
     olxprices = Olx(newUrl).getPrice()
-    counter += 1
+
+# This part of code saves all titles
+Titles = []
+for page in nextpage:
+    for titles in title:
+        Titles.append(titles.get_text().replace('\n', '').replace('n\'', '').replace(',',''))
+    newUrl = page['href']   
+    olxprices = Olx(newUrl).getPrice()
+print(Prices)
+print(Titles)
+
+saveOutput()
